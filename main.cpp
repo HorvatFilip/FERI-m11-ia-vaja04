@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <limits>
 
 using namespace std;
 
@@ -111,7 +112,7 @@ void PrintSimplexData(int n, int m, float **A, float *b, float *c)
          << endl;
 }
 
-bool InitializeSimplex(int n, int m, float *b, int *(&N), int *(&B), int &v)
+bool InitializeSimplex(int n, int m, float *b, int *(&N), int *(&B), float &v)
 {
     for (int i = 0; i < (n + m); i++)
     {
@@ -138,23 +139,77 @@ bool Run(float *c, int *N, int n, int &e)
     {
         if (c[N[k] - 1] > 0)
         {
-            e = c[N[k] - 1];
+            e = N[k] - 1;
             return true;
         }
     }
     return false;
 }
 
-void Simplex(int n, int m, float **A, float *b, float *c)
+void Find_l(int &l, float *delta, int m)
+{
+    l = 0;
+    for (int i = 1; i < m; i++)
+    {
+        if (delta[l] > delta[i])
+            l = i;
+    }
+}
+
+// todo PIVOT fun
+
+bool IsinB(int *B, int m, int i)
+{
+    for (int j = 0; j < m; j++)
+    {
+        if (i == B[j])
+            return true;
+    }
+    return false;
+}
+
+void Simplex(int n, int m, float **A, float *b, float *c, int *(&x), float(&z))
 {
     int *N = NULL, *B = NULL;
-    int v, e;
+    int e, l;
+    float *delta = new float[m];
+    float inf = numeric_limits<float>::infinity();
+    float v;
+    x = new int[n + m];
 
     if (InitializeSimplex(n, m, b, N, B, v))
     {
         while (Run(c, N, n, e))
         {
+            for (int j = 0; j < m; j++)
+            {
+                if (A[B[j] - 1][e] > 0)
+                    delta[j] = b[B[j] - 1] / A[B[j] - 1][e];
+                else
+                    delta[j] = inf;
+
+                Find_l(l, delta, m);
+
+                if (delta[l] == inf)
+                {
+                    cout << "Error - inf program" << endl;
+                    return;
+                }
+                else
+                {
+                    //TODO PIVOT
+                }
+            }
         }
+        for (int i = 0; i < (n + m); i++)
+        {
+            if (IsinB(B, m, i + 1))
+                x[i] = B[i];
+            else
+                x[i] = 0;
+        }
+
+        z = v;
     }
     else
     {
