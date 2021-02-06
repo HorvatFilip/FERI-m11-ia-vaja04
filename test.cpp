@@ -2,20 +2,34 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <stdio.h>
+#include <string.h>
+#include <iterator>
 
 using namespace std;
 
 int main()
 {
-
-    string s = "10 20 50 10 5.30 0.00001 1";
-
-    istringstream iss(s);
-    string sub;
-    while (iss >> sub)
+    int *A = new int[5];
+    for (int i = 0; i < 5; i++)
     {
-        cout << sub << endl;
+        A[i] = i + 1;
     }
+
+    for (int i = 0; i < 5; i++)
+    {
+        cout << A[i] << " ";
+    }
+    cout << endl;
+
+    int *n_A = new int[5];
+
+    copy(A, A + 5, n_A);
+    for (int i = 0; i < 5; i++)
+    {
+        cout << n_A[i] << " ";
+    }
+    cout << endl;
 
     cout << endl
          << endl;
