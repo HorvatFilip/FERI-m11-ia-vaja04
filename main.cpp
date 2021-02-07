@@ -5,13 +5,19 @@
 #include <limits>
 #include <string.h>
 #include <vector>
+#include <stdlib.h>
+#include <time.h>
 
 using namespace std;
 
-void ReadSimplexFile(string fileName, int &n, int &m, float **(&A), float *(&b), float *(&c))
+bool ReadSimplexFile(string fileName, int &n, int &m, float **(&A), float *(&b), float *(&c))
 {
 
     ifstream inputFile(fileName);
+    if (!inputFile.is_open())
+    {
+        return false;
+    }
     string line, numStr;
     istringstream *iss;
     int state = 0, indx = 0, i = 0;
@@ -77,6 +83,7 @@ void ReadSimplexFile(string fileName, int &n, int &m, float **(&A), float *(&b),
         }
     }
     delete iss;
+    return true;
 }
 
 void PrintSimplexData(int n, int m, float **A, float *b, float *c, int *N, int *B)
@@ -176,34 +183,74 @@ void Find_l(int &l, float *delta, int m)
     }
 }
 
-void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int *(&B), float &v, int l, int e)
+float **n_A = NULL;
+float *n_b = NULL;
+float *n_c = NULL;
+vector<int> n_N;
+vector<int> n_B;
+float n_v;
+
+void InitWorkingBuffers(int n, int m)
 {
-    float **n_A = new float *[n + m];
+    n_A = new float *[n + m];
     for (int i = 0; i < (n + m); i++)
     {
         n_A[i] = new float[n + m];
+    }
+    n_b = new float[n + m];
+    n_c = new float[n + m];
+    n_N = vector<int>(n);
+    n_B = vector<int>(m);
+    n_v = 0;
+}
+
+void FreeWorkingBuffers(int n, int m)
+{
+    for (int i = 0; i < (n + m); i++)
+    {
+        delete[] n_A[i];
+        n_A[i] = NULL;
+    }
+    delete[] n_A;
+    n_A = NULL;
+    delete[] n_b;
+    n_b = NULL;
+    delete[] n_c;
+    n_c = NULL;
+}
+
+void bubbleSort(vector<int> &arr, int n)
+{
+    int i, j;
+    int tmp;
+    for (i = 0; i < n - 1; i++)
+    {
+        for (j = 0; j < n - i - 1; j++)
+            if (arr[j] > arr[j + 1])
+            {
+                tmp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = tmp;
+            }
+    }
+}
+
+void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int *(&B), float &v, int l, int e)
+{
+    for (int i = 0; i < (n + m); i++)
+    {
         memset(n_A[i], 0, (n + m) * sizeof(float));
     }
-    float *n_b = new float[n + m];
-    float *n_c = new float[n + m];
-    vector<int> n_N(N, N + n);
-    vector<int> n_B(B, B + m);
-    float n_v;
-
-    //memcpy(n_A, A, (n + m) * (n + m) * sizeof(float));
-    //memcpy(n_b, b, (n + m) * sizeof(float));
-    //memcpy(n_c, c, (n + m) * sizeof(float));
     memset(n_b, 0, (n + m) * sizeof(float));
     memset(n_c, 0, (n + m) * sizeof(float));
+    n_N = vector<int>(n);
+    n_B = vector<int>(m);
+    copy(N + 0, N + n, n_N.begin());
+    copy(B + 0, B + m, n_B.begin());
 
-    float tmpF;
-    int _e, _l;
-
-    _e = e;
-    _l = l;
+    //PrintSimplexData(n, m, A, b, c, N, B);
 
     //n_be := bl/ale;
-    tmpF = b[l] / A[l][e];
     n_b[e] = b[l] / A[l][e];
 
     //for vsak j v N - {e}
@@ -213,11 +260,9 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
             continue;
 
         //n_aej := alj/ale;
-        tmpF = A[l][N[j] - 1] / A[l][e];
         n_A[e][N[j] - 1] = A[l][N[j] - 1] / A[l][e];
     }
     //n_ael := 1/ale;
-    tmpF = 1 / A[l][e];
     n_A[e][l] = 1 / A[l][e];
 
     //for vsak i v B - {l}
@@ -227,7 +272,6 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
             continue;
 
         //n_bi := bi - aie*n_be
-        tmpF = b[B[i] - 1] - A[B[i] - 1][e] * n_b[e];
         n_b[B[i] - 1] = b[B[i] - 1] - A[B[i] - 1][e] * n_b[e];
 
         //for vsak j v N - {e}
@@ -237,16 +281,13 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
                 continue;
 
             //n_aij := aij - aie*n_aej
-            tmpF = A[B[i] - 1][N[j] - 1] - A[B[i] - 1][e] * n_A[e][N[j] - 1];
             n_A[B[i] - 1][N[j] - 1] = A[B[i] - 1][N[j] - 1] - A[B[i] - 1][e] * n_A[e][N[j] - 1];
         }
         //n_ail := -aie*n_ael
-        tmpF = -A[B[i] - 1][e] * n_A[e][l];
         n_A[B[i] - 1][l] = -A[B[i] - 1][e] * n_A[e][l];
     }
 
     //n_v := v + ce*n_be
-    tmpF = v + c[e] * n_b[e];
     n_v = v + c[e] * n_b[e];
 
     //for vsak j v N - {e}
@@ -256,12 +297,10 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
             continue;
 
         //n_cj := cj - ce*n_aej
-        tmpF = c[N[j] - 1] - c[e] * n_A[e][N[j] - 1];
         n_c[N[j] - 1] = c[N[j] - 1] - c[e] * n_A[e][N[j] - 1];
     }
 
     //n_cl := -ce*n_ael
-    tmpF = -c[e] * n_A[e][l];
     n_c[l] = -c[e] * n_A[e][l];
 
     //n_N := N-{e} U {l}
@@ -271,6 +310,7 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
             n_N.erase(n_N.begin() + i);
     }
     n_N.push_back(l + 1);
+    //bubbleSort(n_N, n);
 
     //n_B := B-{l} U {e}
     for (int i = 0; i < m; i++)
@@ -279,12 +319,11 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
             n_B.erase(n_B.begin() + i);
     }
     n_B.insert(n_B.begin(), 1, e + 1);
+    //bubbleSort(n_B, m);
 
-    //memcpy(A, n_A, (n + m) * (n + m));
-    //memcpy(b, n_b, n + m);
-    //memcpy(c, n_c, n + m);
+    for (int i = 0; i < (m + n); i++)
+        copy(n_A[i] + 0, n_A[i] + (n + m) * sizeof(float), A[i]);
 
-    copy(n_A, n_A + (n + m) * (n + m) * sizeof(float), A);
     copy(n_b, n_b + (n + m) * sizeof(float), b);
     copy(n_c, n_c + (n + m) * sizeof(float), c);
 
@@ -292,38 +331,30 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
     copy(n_B.begin(), n_B.end(), B);
 
     v = n_v;
-
-    /*
-    for (int i = 0; i < (n + m); i++)
-    {
-        delete[] n_A[i];
-    }
-    delete n_A;
-    delete[] n_b;
-    delete[] n_c;
-    delete[] n_N;
-    delete[] n_B;
-    */
 }
 
-bool IsinB(int *B, int m, int i)
+bool IsinB(int *B, int m, int i, int &indx)
 {
     for (int j = 0; j < m; j++)
     {
         if (i == B[j])
+        {
+            indx = j;
             return true;
+        }
     }
     return false;
 }
 
-void Simplex(int n, int m, float **A, float *b, float *c, float *(&x), float(&z))
+bool Simplex(int n, int m, float **A, float *b, float *c, float *(&x), float(&z))
 {
-    int *N = NULL, *B = NULL;
+    int *N, *B;
     int e, l;
     float *delta = new float[m];
     float inf = numeric_limits<float>::infinity();
     float v;
     x = new float[n + m];
+    int state = 0, indx;
 
     if (InitializeSimplex(n, m, b, N, B, v))
     {
@@ -342,55 +373,153 @@ void Simplex(int n, int m, float **A, float *b, float *c, float *(&x), float(&z)
             if (delta[l] == inf)
             {
                 cout << "Error - inf program" << endl;
-                return;
+                return false;
             }
             else
             {
+                if (state++ == 0)
+                    InitWorkingBuffers(n, m);
+
                 l = B[l] - 1;
-                PrintSimplexData(n, m, A, b, c, N, B);
                 Pivot(n, m, A, b, c, N, B, v, l, e);
             }
         }
+        //PrintSimplexData(n, m, A, b, c, N, B);
+
         for (int i = 0; i < (n + m); i++)
         {
-            if (IsinB(B, m, i + 1))
-                x[i] = b[B[i] - 1];
+            if (IsinB(B, m, i + 1, indx))
+            {
+                x[i] = b[B[indx] - 1];
+            }
             else
                 x[i] = 0;
         }
-
         z = v;
+        FreeWorkingBuffers(n, m);
+        //delete[] N;
+        N = NULL;
+        delete[] B;
+        B = NULL;
+        delete[] delta;
+        delta = NULL;
+
+        return true;
     }
     else
     {
         cout << "Error - negative val in b vector" << endl;
-        return;
+        return false;
     }
 }
 
-int main()
+void PrintSiplexResult(int n, int m, float *x, float z)
 {
+    for (int i = 0; i < (n + m); i++)
+    {
+        cout << "x" << i + 1 << ": " << x[i] << endl;
+    }
+    cout << endl;
+    cout << "z: " << z << endl
+         << endl;
+}
+
+void MySimplex()
+{
+
+    cout << "Simplex- file data" << endl
+         << endl;
+
+    string fileName;
+    cout << "Enter file name: ";
+    cin >> fileName;
 
     int n, m;
     float **A = NULL;
     float *b = NULL, *c = NULL;
 
-    string fileName = "./doc/testSimplex2.txt";
-
-    ReadSimplexFile(fileName, n, m, A, b, c);
+    if (!ReadSimplexFile(fileName, n, m, A, b, c))
+    {
+        cout << "File not found!" << endl;
+    }
 
     float *x = NULL;
     float z;
 
     Simplex(m, m, A, b, c, x, z);
 
-    cout << "x: " << endl;
+    PrintSiplexResult(n, m, x, z);
+
     for (int i = 0; i < (n + m); i++)
     {
-        cout << x[i] << " ";
+        delete[] A[i];
     }
-    cout << endl;
-    cout << "z: " << z << endl;
+    delete[] A;
+    delete[] b;
+    delete[] c;
+    delete[] x;
+}
+
+void GenerateSimplexData(int n, int m, float **(&A), float *(&b), float *(&c))
+{
+    srand(time(NULL));
+
+    A = new float *[n + m];
+    for (int i = 0; i < (n + m); i++)
+    {
+        A[i] = new float[n + m];
+        memset(A[i], 0, (n + m) * sizeof(float));
+    }
+
+    for (int i = n; i < (n + m); i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            A[i][j] = rand() % 1000 + 1;
+        }
+    }
+
+    b = new float[n + m];
+    for (int i = n; i < (n + m); i++)
+    {
+        b[i] = rand() % 1000 + 1;
+    }
+
+    c = new float[n + m];
+    for (int i = 0; i < n; i++)
+    {
+        c[i] = rand() % 1000 + 1;
+    }
+}
+
+void TestSimplex()
+{
+    int n, m;
+    float **A = NULL;
+    float *b = NULL, *c = NULL;
+
+    float *x = NULL;
+    float z;
+
+    m = n = 6;
+
+    GenerateSimplexData(n, m, A, b, c);
+
+    Simplex(m, m, A, b, c, x, z);
+
+    for (int i = 0; i < (n + m); i++)
+    {
+        delete[] A[i];
+    }
+    delete[] A;
+    delete[] b;
+    delete[] c;
+    delete[] x;
+}
+
+int main()
+{
+    TestSimplex();
 
     return 0;
 }

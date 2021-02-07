@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iterator>
+#include <vector>
 
 using namespace std;
 
@@ -16,20 +17,15 @@ int main()
         A[i] = i + 1;
     }
 
+    vector<int> B;
+    B = vector<int>(5);
+
+    copy(A + 0, A + 5, B.begin());
+
     for (int i = 0; i < 5; i++)
     {
-        cout << A[i] << " ";
+        cout << B.at(i) << " ";
     }
-    cout << endl;
-
-    int *n_A = new int[5];
-
-    copy(A, A + 5, n_A);
-    for (int i = 0; i < 5; i++)
-    {
-        cout << n_A[i] << " ";
-    }
-    cout << endl;
 
     cout << endl
          << endl;
