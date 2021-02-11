@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <time.h>
+#include <chrono>
 
 using namespace std;
 
@@ -237,18 +238,20 @@ void bubbleSort(vector<int> &arr, int n)
 
 void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int *(&B), float &v, int l, int e)
 {
-    for (int i = 0; i < (n + m); i++)
+    for (int i = 0; i < n + m; i++)
     {
-        memset(n_A[i], 0, (n + m) * sizeof(float));
+        for (int j = 0; j < n + m; j++)
+        {
+            n_A[i][j] = 0;
+        }
+        n_b[i] = 0;
+        n_c[i] = 0;
     }
-    memset(n_b, 0, (n + m) * sizeof(float));
-    memset(n_c, 0, (n + m) * sizeof(float));
+
     n_N = vector<int>(n);
     n_B = vector<int>(m);
     copy(N + 0, N + n, n_N.begin());
     copy(B + 0, B + m, n_B.begin());
-
-    //PrintSimplexData(n, m, A, b, c, N, B);
 
     //n_be := bl/ale;
     n_b[e] = b[l] / A[l][e];
@@ -321,11 +324,15 @@ void Pivot(int n, int m, float **(&A), float *(&b), float *(&c), int *(&N), int 
     n_B.insert(n_B.begin(), 1, e + 1);
     //bubbleSort(n_B, m);
 
-    for (int i = 0; i < (m + n); i++)
-        copy(n_A[i] + 0, n_A[i] + (n + m) * sizeof(float), A[i]);
-
-    copy(n_b, n_b + (n + m) * sizeof(float), b);
-    copy(n_c, n_c + (n + m) * sizeof(float), c);
+    for (int i = 0; i < n + m; i++)
+    {
+        for (int j = 0; j < n + m; j++)
+        {
+            A[i][j] = n_A[i][j];
+        }
+        b[i] = n_b[i];
+        c[i] = n_c[i];
+    }
 
     copy(n_N.begin(), n_N.end(), N);
     copy(n_B.begin(), n_B.end(), B);
@@ -350,7 +357,7 @@ bool Simplex(int n, int m, float **A, float *b, float *c, float *(&x), float(&z)
 {
     int *N, *B;
     int e, l;
-    float *delta = new float[m];
+    float *delta = NULL;
     float inf = numeric_limits<float>::infinity();
     float v;
     x = new float[n + m];
@@ -383,7 +390,9 @@ bool Simplex(int n, int m, float **A, float *b, float *c, float *(&x), float(&z)
                 l = B[l] - 1;
                 Pivot(n, m, A, b, c, N, B, v, l, e);
             }
+            delete[] delta;
         }
+        delta = NULL;
         //PrintSimplexData(n, m, A, b, c, N, B);
 
         for (int i = 0; i < (n + m); i++)
@@ -397,12 +406,10 @@ bool Simplex(int n, int m, float **A, float *b, float *c, float *(&x), float(&z)
         }
         z = v;
         FreeWorkingBuffers(n, m);
-        //delete[] N;
+        delete[] N;
         N = NULL;
         delete[] B;
         B = NULL;
-        delete[] delta;
-        delta = NULL;
 
         return true;
     }
@@ -424,7 +431,7 @@ void PrintSiplexResult(int n, int m, float *x, float z)
          << endl;
 }
 
-void MySimplex()
+void SimplexFromFile()
 {
 
     cout << "Simplex- file data" << endl
@@ -433,6 +440,7 @@ void MySimplex()
     string fileName;
     cout << "Enter file name: ";
     cin >> fileName;
+    fileName = "./doc/" + fileName + ".txt";
 
     int n, m;
     float **A = NULL;
@@ -441,6 +449,7 @@ void MySimplex()
     if (!ReadSimplexFile(fileName, n, m, A, b, c))
     {
         cout << "File not found!" << endl;
+        return;
     }
 
     float *x = NULL;
@@ -468,27 +477,39 @@ void GenerateSimplexData(int n, int m, float **(&A), float *(&b), float *(&c))
     for (int i = 0; i < (n + m); i++)
     {
         A[i] = new float[n + m];
-        memset(A[i], 0, (n + m) * sizeof(float));
     }
 
-    for (int i = n; i < (n + m); i++)
+    for (int i = 0; i < (n + m); i++)
     {
-        for (int j = 0; j < n; j++)
+        for (int j = 0; j < (n + m); j++)
         {
-            A[i][j] = rand() % 1000 + 1;
+            if (i >= n && j < n)
+            {
+                A[i][j] = rand() % 1000 + 1;
+            }
+            else
+            {
+                A[i][j] = 0;
+            }
         }
     }
 
     b = new float[n + m];
-    for (int i = n; i < (n + m); i++)
+    for (int i = 0; i < (n + m); i++)
     {
-        b[i] = rand() % 1000 + 1;
+        if (i >= n)
+            b[i] = rand() % 1000 + 1;
+        else
+            b[i] = 0;
     }
 
     c = new float[n + m];
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < (n + m); i++)
     {
-        c[i] = rand() % 1000 + 1;
+        if (i < n)
+            c[i] = rand() % 1000 + 1;
+        else
+            c[i] = 0;
     }
 }
 
@@ -501,20 +522,43 @@ void TestSimplex()
     float *x = NULL;
     float z;
 
-    m = n = 6;
+    int maxDataSize = 6;
 
-    GenerateSimplexData(n, m, A, b, c);
+    chrono::high_resolution_clock::time_point t1;
+    chrono::high_resolution_clock::time_point t2;
+    chrono::microseconds time_span;
+    int sum;
+    double *testTimes = new double[maxDataSize - 2 + 1];
 
-    Simplex(m, m, A, b, c, x, z);
-
-    for (int i = 0; i < (n + m); i++)
+    for (n = 2; n <= maxDataSize; n++)
     {
-        delete[] A[i];
+        sum = 0;
+        for (int j = 0; j < 10; j++)
+        {
+            GenerateSimplexData(n, n, A, b, c);
+
+            t1 = chrono::high_resolution_clock::now();
+            Simplex(n, n, A, b, c, x, z);
+            t2 = chrono::high_resolution_clock::now();
+            time_span = chrono::duration_cast<chrono::microseconds>(t2 - t1);
+
+            sum += time_span.count();
+
+            //PrintSiplexResult(n, n, x, z);
+
+            for (int i = 0; i < (n + n); i++)
+            {
+                delete[] A[i];
+            }
+            delete[] A;
+            delete[] b;
+            delete[] c;
+            delete[] x;
+        }
+        testTimes[n - 2] = sum / 10;
+        cout << testTimes[n - 2] << endl;
     }
-    delete[] A;
-    delete[] b;
-    delete[] c;
-    delete[] x;
+    delete[] testTimes;
 }
 
 int main()

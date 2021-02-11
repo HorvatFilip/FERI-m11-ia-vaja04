@@ -11,20 +11,46 @@ using namespace std;
 
 int main()
 {
-    int *A = new int[5];
+    float **A = new float *[5];
     for (int i = 0; i < 5; i++)
     {
-        A[i] = i + 1;
+        A[i] = new float[5];
+        for (int j = 0; j < 5; j++)
+        {
+            A[i][j] = 0;
+        }
     }
 
-    vector<int> B;
-    B = vector<int>(5);
+    for (int i = 0; i < 5; i++)
+    {
+        for (int j = 0; j < 5; j++)
+        {
+            cout << A[i][j] << " ";
+        }
+        cout << endl;
+    }
 
-    copy(A + 0, A + 5, B.begin());
+    float **B = new float *[5];
+    for (int i = 0; i < 5; i++)
+    {
+        B[i] = new float[5];
+        for (int j = 0; j < 5; j++)
+        {
+            B[i][j] = 1;
+        }
+    }
+
+    int n = 5;
+
+    copy(B + 0, B + (n + n) * (n + n), A + 0);
 
     for (int i = 0; i < 5; i++)
     {
-        cout << B.at(i) << " ";
+        for (int j = 0; j < 5; j++)
+        {
+            cout << A[i][j] << " ";
+        }
+        cout << endl;
     }
 
     cout << endl
