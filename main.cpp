@@ -455,7 +455,10 @@ void SimplexFromFile()
     float *x = NULL;
     float z;
 
-    Simplex(m, m, A, b, c, x, z);
+    if (!Simplex(m, m, A, b, c, x, z))
+    {
+        return;
+    }
 
     PrintSiplexResult(n, m, x, z);
 
@@ -513,6 +516,42 @@ void GenerateSimplexData(int n, int m, float **(&A), float *(&b), float *(&c))
     }
 }
 
+void ProcessSimplexTestData(vector<int> data)
+{
+
+    int min, max, Q1, Q3, sum = 0;
+    double mean, median, Q2, tmp;
+    int dataSize = data.size();
+
+    bubbleSort(data, dataSize);
+
+    min = data[0];
+    max = data[dataSize - 1];
+
+    for (int i = 0; i < dataSize; i++)
+        sum += data[i];
+    mean = sum / dataSize;
+
+    if (dataSize % 2 == 0)
+    {
+        int x1, x2;
+        x2 = dataSize / 2;
+        x1 = x2 - 1;
+        median = (data[x1] + data[x2]) / 2;
+
+        x1 = dataSize / 4;
+        Q1 = data[x1];
+
+        x2 = x1 + dataSize / 2;
+        Q3 = data[x2];
+    }
+    else
+    {
+    }
+
+    cout << "min: " << min << " max: " << max << " Q1: " << Q1 << " meadian: " << median << " Q3: " << Q3 << endl;
+}
+
 void TestSimplex()
 {
     int n, m;
@@ -522,18 +561,19 @@ void TestSimplex()
     float *x = NULL;
     float z;
 
-    int maxDataSize = 6;
+    int maxDataSize = 50;
+    int testPerData = 100;
 
     chrono::high_resolution_clock::time_point t1;
     chrono::high_resolution_clock::time_point t2;
     chrono::microseconds time_span;
     int sum;
-    double *testTimes = new double[maxDataSize - 2 + 1];
+    vector<int> testTimes(testPerData);
 
     for (n = 2; n <= maxDataSize; n++)
     {
-        sum = 0;
-        for (int j = 0; j < 10; j++)
+        testTimes.clear();
+        for (int j = 0; j < testPerData; j++)
         {
             GenerateSimplexData(n, n, A, b, c);
 
@@ -542,7 +582,7 @@ void TestSimplex()
             t2 = chrono::high_resolution_clock::now();
             time_span = chrono::duration_cast<chrono::microseconds>(t2 - t1);
 
-            sum += time_span.count();
+            testTimes.push_back(time_span.count());
 
             //PrintSiplexResult(n, n, x, z);
 
@@ -555,15 +595,38 @@ void TestSimplex()
             delete[] c;
             delete[] x;
         }
-        testTimes[n - 2] = sum / 10;
-        cout << testTimes[n - 2] << endl;
+        bubbleSort(testTimes, testTimes.size());
+        cout << "Test Times for matrix size: " << n << endl;
+        for (int i = 0; i < testTimes.size(); i++)
+        {
+            cout << testTimes[i] << endl;
+        }
+        //ProcessSimplexTestData(testTimes);
     }
-    delete[] testTimes;
 }
 
 int main()
 {
-    TestSimplex();
+
+    cout << "==== Simplex alg ====" << endl;
+
+    int choice = 0;
+    while (true)
+    {
+        cout << "Simplex from file - 1" << endl;
+        cout << "Generate simplex matrix(test) - 2" << endl;
+        cin >> choice;
+
+        if (choice == 1)
+            SimplexFromFile();
+        else if (choice == 2)
+            TestSimplex();
+        else
+            break;
+    }
+
+    cout << endl
+         << endl;
 
     return 0;
 }
